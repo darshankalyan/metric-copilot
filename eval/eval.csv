@@ -1,0 +1,13 @@
+question,expected_source
+What is the minimum number of responses needed to report a journey's NPS?,kpi_nps.md
+Is a customer who scores 8 a promoter?,kpi_nps.md
+Is a polite customer with an unresolved issue counted as dissatisfied?,kpi_dissatisfaction.md
+When does a call count as resolved if a callback was promised?,kpi_unresolved_rate.md
+Are dormant accounts counted as attrition?,kpi_attrition.md
+Which journey do card PIN issues belong to?,journey_taxonomy.md
+What is the grain of the survey fact table?,data_dictionary_fact_survey.md
+When should a journey's NPS change be flagged during QC?,qc_rules.md
+How is Hinglish text handled?,language_policy.md
+On what scale is CSAT measured?,kpi_csat.md
+What is Aurora Bank's NPS target for 2027?,NONE
+Who is the CEO of Aurora Bank?,NONE

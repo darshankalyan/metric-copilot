@@ -1,0 +1,56 @@
+[
+  {
+    "id": "data_dictionary_fact_survey.md-0",
+    "source": "data_dictionary_fact_survey.md",
+    "chunk": 0,
+    "text": "# Data Dictionary: analytics.fact_survey_response\nGrain: one row per valid survey response.\nColumns:\n- response_id (PK), customer_id, journey_id (FK to dim_journey), date_id (FK to dim_date)\n- region_id (FK to dim_region), channel_id (FK to dim_channel: app, branch, call centre, web)\n- segment_id (FK to dim_segment: mass, affluent, NRI), nps_score (0-10, nullable)\n- verbatim (free-text comment), language_code (ISO 639-1, e.g. hi, kn, ta, en)\nNotes:\n- NPS is calculated from this table; never pre-aggregate scores before applying the 30-response base rule.\n- Deleted or test responses are flagged with is_valid = false and must be filtered out."
+  },
+  {
+    "id": "journey_taxonomy.md-0",
+    "source": "journey_taxonomy.md",
+    "chunk": 0,
+    "text": "# Customer Journey Taxonomy (6 journeys)\n- account_opening: new savings or current account, documents, verification status.\n- card_activation: activating new or replacement debit/credit cards, PIN generation.\n- fund_transfer: NEFT/IMPS/UPI transfers, failed or pending transfers, reversals.\n- loan_disbursal: status and receipt of sanctioned loan amounts.\n- kyc_update: address, phone, ID and other KYC detail changes.\n- charges_and_fees: annual fees, penalty charges, fee reversal requests.\nRules:\n- Each call maps to exactly one primary journey: the customer's first stated reason.\n- If the classifier's confidence is below 0.6, map to \"other\" and send for manual review.\n- Card PIN issues belong to card_activation, not charges_and_fees."
+  },
+  {
+    "id": "kpi_attrition.md-0",
+    "source": "kpi_attrition.md",
+    "chunk": 0,
+    "text": "# KPI: Monthly Account Attrition Rate\nDefinition: Percentage of accounts active at the start of the month that are closed during the month.\nFormula: accounts closed in month / accounts active at start of month * 100.\nRules:\n- Dormant accounts (no customer-initiated transaction for 12 months) are NOT counted as attrition until formally closed.\n- Accounts closed by the bank for compliance reasons are excluded from both numerator and denominator.\n- Joint accounts count once, regardless of the number of holders."
+  },
+  {
+    "id": "kpi_csat.md-0",
+    "source": "kpi_csat.md",
+    "chunk": 0,
+    "text": "# KPI: Customer Satisfaction (CSAT), Aurora Bank CX Programme\nQuestion: \"How satisfied were you with this interaction?\" on a 1-5 scale.\nFormula: responses scoring 4 or 5 / total valid responses * 100.\nRules:\n- CSAT is reported only for service journeys (complaints, card activation, KYC update), not for sales journeys.\n- CSAT measures the single interaction; NPS measures the overall relationship. Never average them together.\n- Minimum base for reporting: 20 responses."
+  },
+  {
+    "id": "kpi_dissatisfaction.md-0",
+    "source": "kpi_dissatisfaction.md",
+    "chunk": 0,
+    "text": "# KPI: Customer Dissatisfaction Rate (Call Analytics)\nDefinition: Percentage of analysed calls in which the CUSTOMER expresses negative sentiment about the bank, its products or its service.\nFormula: calls with customer sentiment = negative / total analysed calls * 100.\nRules:\n- Sentiment is judged only from the customer's own words. Agent statements are ignored.\n- Resolution status must NOT influence this metric. A polite customer with an unresolved issue is not dissatisfied; an angry customer whose issue was resolved IS dissatisfied.\n- Calls shorter than 20 seconds or with no customer speech are excluded.\n- Unresolved issues are tracked separately in the Unresolved Rate KPI."
+  },
+  {
+    "id": "kpi_nps.md-0",
+    "source": "kpi_nps.md",
+    "chunk": 0,
+    "text": "# KPI: Net Promoter Score (NPS), Aurora Bank CX Programme\nQuestion: \"How likely are you to recommend Aurora Bank to a friend?\" scored 0-10.\nPromoters score 9-10. Passives score 7-8. Detractors score 0-6.\nFormula: (promoters - detractors) / total valid responses * 100. Range: -100 to +100.\nRules:\n- Journey-level NPS is reported only when the journey has at least 30 valid responses in the period; otherwise show \"Insufficient base\".\n- Responses with a blank score are excluded from the denominator.\n- Surveys are sent within 48 hours of the interaction; responses after 14 days are discarded.\n- One response per customer per journey per 30 days; keep the earliest.\nOwner: CX Analytics. Refreshed monthly by the 5th business day."
+  },
+  {
+    "id": "kpi_unresolved_rate.md-0",
+    "source": "kpi_unresolved_rate.md",
+    "chunk": 0,
+    "text": "# KPI: Unresolved Rate (Call Analytics)\nDefinition: Percentage of analysed calls where the customer's issue was not resolved by the end of the call.\nFormula: calls with resolution_status = unresolved / total analysed calls * 100.\nRules:\n- A call counts as resolved if the issue was fixed during the call, OR a fix was confirmed with a completion time under 48 hours.\n- Promised callbacks without a confirmed time count as unresolved.\n- Transferred calls are judged on the final segment only.\n- This metric is independent of customer sentiment; see the Dissatisfaction Rate KPI."
+  },
+  {
+    "id": "language_policy.md-0",
+    "source": "language_policy.md",
+    "chunk": 0,
+    "text": "# Language Handling Policy: Call and Survey Text\nSupported languages: English, Hindi, Kannada, Tamil, Telugu, Malayalam, Marathi, Bengali, Gujarati, Punjabi.\nRules:\n- Detect language first; store it in language_code.\n- Sentiment and journey are classified in the ORIGINAL language. English translations are produced only for display in dashboards.\n- Hinglish (Hindi in Latin script) is treated as Hindi.\n- Code-mixed text uses the language of the majority of words.\n- Budget note: non-English text uses more tokens per word, so cost estimates are calculated per language."
+  },
+  {
+    "id": "qc_rules.md-0",
+    "source": "qc_rules.md",
+    "chunk": 0,
+    "text": "# QC Checklist: Monthly CX Release\nRun all checks before any dashboard or report reaches the client.\n1. Row-count reconciliation: fact table valid rows must equal the source extract exactly (0% tolerance).\n2. Freshness: max(response_date) must be within 3 days of the refresh date; otherwise the model is stale.\n3. Journey NPS movement: flag any journey whose NPS changes by more than 15 points month-over-month for analyst review.\n4. Trend arrows: arrow direction must equal sign(current period - previous period). Up = improved.\n5. Base size: hide journey NPS below 30 responses (see the NPS KPI).\n6. Sentiment-resolution independence: if more than 90% of unresolved calls are labelled negative, re-check the sentiment prompt.\nLog every failure in the issue log with date, check number and fix."
+  }
+]

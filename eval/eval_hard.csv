@@ -1,0 +1,11 @@
+question,expected_source
+"If an account has had no customer activity for a year, has that customer left us?",kpi_attrition.md
+"A caller was really friendly but we couldn't fix their problem. Does that push up our unhappy-customer number?",kpi_dissatisfaction.md
+"क्या 8 स्कोर देने वाला ग्राहक प्रमोटर है?",kpi_nps.md
+"How long after an interaction do we stop accepting survey answers?",kpi_nps.md
+"Which closed accounts are left out of the churn numbers completely?",kpi_attrition.md
+"Can we average CSAT and NPS into one score for the board deck?",kpi_csat.md
+"Our journey score jumped 20 points since last month. Is that a problem before we send the report?",qc_rules.md
+"Do we translate Tamil calls into English before judging the customer's mood?",language_policy.md
+"Which column tells me what language a survey comment was written in?",data_dictionary_fact_survey.md
+"What is the refund policy for credit card annual fees?",NONE
