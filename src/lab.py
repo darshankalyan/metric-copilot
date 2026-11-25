@@ -1,76 +1,60 @@
-# src/lab.py
-# Toolbox for every model call in this project:
-#   ask()   -> Gemini GENERATES text (used later in rag.py)
-#   embed() -> Gemini turns texts into EMBEDDINGS (used in ingest.py and peek.py)
-
+"""Thin wrappers around the Gemini API: text generation and embeddings."""
 import os
 import time
-from dotenv import load_dotenv, find_dotenv
+
+from dotenv import find_dotenv, load_dotenv
 from google import genai
 from google.genai import types
 
-# --- Load the API key from .env (searched from the folder you run from) ---
 load_dotenv(find_dotenv(usecwd=True))
 if not os.getenv("GEMINI_API_KEY"):
-    raise SystemExit(
-        "GEMINI_API_KEY not found.\n"
-        "Check: (1) .env is in the project root (metric-copilot), "
-        "(2) it contains exactly GEMINI_API_KEY=your_key (no quotes, no spaces)."
-    )
+    raise SystemExit("GEMINI_API_KEY not found. Copy .env.example to .env and add your key.")
 
-client = genai.Client()                 # reads GEMINI_API_KEY automatically
-MODEL = "gemini-3.5-flash-lite"         # text generation model (free tier)
-EMBED_MODEL = "gemini-embedding-001"    # embedding model (free tier, 100+ languages)
+client = genai.Client()
+MODEL = "gemini-3.5-flash-lite"
+EMBED_MODEL = "gemini-embedding-001"
 
 
-def ask(prompt, system=None, temperature=0.0, max_tokens=400, schema=None, retries=4):
-    """Send one prompt to the model. Returns text + latency + token counts."""
-    settings = dict(
-        temperature=temperature,
-        max_output_tokens=max_tokens,
-        system_instruction=system,
-    )
+def _retry(call, retries=4):
+    """Retry on rate limits (429) and overloads (503), backing off 5s, 10s, 20s."""
+    for attempt in range(retries):
+        try:
+            return call()
+        except Exception as e:
+            transient = "429" in str(e) or "503" in str(e)
+            if not transient or attempt == retries - 1:
+                raise
+            wait = 5 * 2 ** attempt
+            print(f"  rate-limited, retrying in {wait}s")
+            time.sleep(wait)
+
+
+def ask(prompt, system=None, temperature=0.0, max_tokens=400, schema=None):
+    settings = dict(temperature=temperature, max_output_tokens=max_tokens,
+                    system_instruction=system)
     if schema is not None:
         settings.update(response_mime_type="application/json", response_schema=schema)
     config = types.GenerateContentConfig(**settings)
 
-    for attempt in range(retries):
-        try:
-            start = time.time()
-            response = client.models.generate_content(
-                model=MODEL, contents=prompt, config=config
-            )
-            latency = round(time.time() - start, 2)
-            usage = response.usage_metadata
-            time.sleep(4)                                   # stay under free per-minute limit
-            return {
-                "text": response.text or "",
-                "latency_s": latency,
-                "in_tokens": getattr(usage, "prompt_token_count", None),
-                "out_tokens": getattr(usage, "candidates_token_count", None),
-            }
-        except Exception as e:
-            error = str(e)
-            if ("429" in error or "503" in error) and attempt < retries - 1:
-                wait = 5 * 2 ** attempt                     # 5s, 10s, 20s
-                print(f"  Busy or rate-limited, retrying in {wait}s...")
-                time.sleep(wait)
-            else:
-                raise
+    start = time.time()
+    response = _retry(lambda: client.models.generate_content(
+        model=MODEL, contents=prompt, config=config))
+    latency = round(time.time() - start, 2)
+    time.sleep(4)  # stay under the free-tier per-minute limit
+
+    usage = response.usage_metadata
+    return {
+        "text": response.text or "",
+        "latency_s": latency,
+        "in_tokens": getattr(usage, "prompt_token_count", None),
+        "out_tokens": getattr(usage, "candidates_token_count", None),
+    }
 
 
-def embed(texts, retries=4):
-    """Turn a LIST of texts into a LIST of vectors (one list of numbers per text)."""
-    for attempt in range(retries):
-        try:
-            result = client.models.embed_content(model=EMBED_MODEL, contents=texts)
-            time.sleep(1)                                   # gentle on the free tier
-            return [e.values for e in result.embeddings]    # same order as the input
-        except Exception as e:
-            error = str(e)
-            if ("429" in error or "503" in error) and attempt < retries - 1:
-                wait = 5 * 2 ** attempt
-                print(f"  Embedding busy, retrying in {wait}s...")
-                time.sleep(wait)
-            else:
-                raise
+def embed(texts, task_type=None):
+    """Return one embedding vector per input text."""
+    config = types.EmbedContentConfig(task_type=task_type) if task_type else None
+    result = _retry(lambda: client.models.embed_content(
+        model=EMBED_MODEL, contents=texts, config=config))
+    time.sleep(1)
+    return [e.values for e in result.embeddings]
